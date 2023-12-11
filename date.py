@@ -19,7 +19,8 @@ def make_date(obj):
     if isinstance(obj, str):
         return make_date(date.fromisoformat(obj))
     if isinstance(obj, (tuple, list)):
-        return SequenceDateGenerator()
+        return SequenceDateGenerator(obj)
+
 
 class DateGenerator(Item):
     def __call__(self, input_date=None, start: date = date.min, end: date = date.max, after: date = date.min,
@@ -67,5 +68,13 @@ class ConstDateGenerator(DateGenerator):
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
-        return self.date
+        yield self.date
 
+
+class SequenceDateGenerator:
+    def __init__(self, dates):
+        self.dates = dates
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        yield from self.dates

@@ -2,6 +2,8 @@ import re
 from calendar import monthrange
 from datetime import timedelta, date
 
+__all__ = ('Tenor',)
+
 
 class Tenor:
     ymwd_b: tuple[int, int, int, int, int]

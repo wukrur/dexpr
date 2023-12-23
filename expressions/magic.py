@@ -6,6 +6,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, Union, Sequence, Mapping
 
+__all__ = ('lazy', 'calc', 'const', 'ParameterOp')
+
 
 def make_op(obj):
     if isinstance(obj, Op):

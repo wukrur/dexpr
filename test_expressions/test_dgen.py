@@ -2,8 +2,8 @@ from datetime import date, timedelta
 
 import pytest
 
-from date import ConstDateGenerator, make_date, make_date_gen, days, weeks, weekdays, weekends, months, years
-from tenor import Tenor
+from expressions.dgen import make_date, make_dgen, days, weeks, weekdays, weekends, months, years
+from expressions.tenor import Tenor
 
 
 @pytest.mark.parametrize(['s', 'valid'], [
@@ -57,16 +57,16 @@ def test_tenor_sub():
 
 
 def test_date_generator():
-    c = make_date_gen('2024-01-01')
+    c = make_dgen('2024-01-01')
     assert tuple(d for d in c()) == (date(2024, 1, 1),)
 
-    c = make_date_gen(['2024-01-01', '2024-01-02'])
+    c = make_dgen(['2024-01-01', '2024-01-02'])
     assert tuple(d for d in c()) == (date(2024, 1, 1), date(2024,1, 2))
 
-    c = make_date_gen(['2024-01-01', '2024-01-02'])[1]
+    c = make_dgen(['2024-01-01', '2024-01-02'])[1]
     assert tuple(d for d in c()) == (date(2024,1, 2),)
 
-    c = '2024-01-15' < make_date_gen(['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01']) < '2024-03-15'
+    c = '2024-01-15' < make_dgen(['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01']) < '2024-03-15'
     assert tuple(d for d in c()) == (date(2024, 2, 1), date(2024,3, 1))
 
     c = '2024-01-01' < days <= '2024-01-05'

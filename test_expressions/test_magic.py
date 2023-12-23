@@ -1,6 +1,6 @@
 import pytest
 
-from magic import *
+from expressions.magic import *
 
 
 @dataclass

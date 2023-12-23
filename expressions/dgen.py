@@ -2,17 +2,19 @@ from datetime import date, timedelta
 from itertools import islice
 from typing import cast
 
-from cal import Calendar
-from magic import Item
-from tenor import Tenor
+from expressions.calendar import Calendar
+from expressions.magic import Item
+from expressions.tenor import Tenor
+
+__all__ = ('is_dgen', 'make_date', 'make_dgen', 'years', 'months', 'weeks', 'weekdays', 'weekends', 'days')
 
 
-def is_date_gen(obj):
-    return isinstance(obj, DateGenerator)
+def is_dgen(obj):
+    return isinstance(obj, DGen)
 
 
 def make_date(obj):
-    if isinstance(obj, DateGenerator):
+    if isinstance(obj, DGen):
         return obj
     if isinstance(obj, date):
         return obj
@@ -23,15 +25,16 @@ def make_date(obj):
     return None
 
 
-def make_date_gen(obj):
-    if isinstance(obj, DateGenerator):
+def make_dgen(obj):
+    if isinstance(obj, DGen):
         return obj
     if isinstance(obj, date):
-        return ConstDateGenerator(obj)
+        return ConstDGen(obj)
     if isinstance(obj, str):
-        return ConstDateGenerator(date.fromisoformat(obj))
+        return ConstDGen(date.fromisoformat(obj))
     if isinstance(obj, (tuple, list)):
-        return SequenceDateGenerator(make_date(obj))
+        return SequenceDGen(make_date(obj))
+
 
 def is_negative_slice(item):
     return item.start is not None and item.start < 0 \
@@ -39,7 +42,7 @@ def is_negative_slice(item):
         or item.step is not None and item.step < 0
 
 
-class DateGenerator(Item):
+class DGen(Item):
     def __call__(self, input_date=None, start: date = date.min, end: date = date.max, after: date = date.min,
                  before: date = date.max, calendar: Calendar = None):
         return self.__invoke__(start, end, after, before, calendar)
@@ -48,7 +51,7 @@ class DateGenerator(Item):
                    calendar: Calendar = None):
         raise StopIteration
 
-    def is_signle_date_gen(self):
+    def is_single_date_gen(self):
         return False
 
     def cadence(self):
@@ -58,72 +61,72 @@ class DateGenerator(Item):
         return self
 
     def __or__(self, other):
-        return JoinDateGenerator(self, make_date_gen(other))
+        return JoinDGen(self, make_dgen(other))
 
     def __ror__(self, other):
-        return JoinDateGenerator(make_date_gen(other), self)
+        return JoinDGen(make_dgen(other), self)
 
     def __and__(self, other):
-        return CommonDatesDateGenerator(self, make_date_gen(other))
+        return CommonDatesDGen(self, make_dgen(other))
 
     def __rand__(self, other):
-        return CommonDatesDateGenerator(make_date_gen(other), self)
+        return CommonDatesDGen(make_dgen(other), self)
 
     def __gt__(self, other):
-        if not is_date_gen(other):
-            return AfterDateGenerator(self, make_date(other))
+        if not is_dgen(other):
+            return AfterDGen(self, make_date(other))
         elif other.is_single_date_gen():
-            return AfterDateGenerator(self, other)
+            return AfterDGen(self, other)
         else:
-            raise ValueError('Comparing two dage generators is not supported')
+            raise ValueError('Comparing two date generators is not supported')
 
     def __lt__(self, other):
-        if is_date_gen(other) and self.is_single_date_gen():
+        if is_dgen(other) and self.is_single_date_gen():
             return other.__ge__(self)
         else:
             if lhs := getattr(self, '__compared__', None):
-                return BeforeDateGenerator(lhs, make_date(other))
-            return BeforeDateGenerator(self, make_date(other))
+                return BeforeDGen(lhs, make_date(other))
+            return BeforeDGen(self, make_date(other))
 
     def __ge__(self, other):
-        if not is_date_gen(other):
-            return AfterOrOnDateGenerator(self, make_date(other))
+        if not is_dgen(other):
+            return AfterOrOnDGen(self, make_date(other))
         elif other.is_single_date_gen():
-            return AfterOrOnDateGenerator(self, other)
+            return AfterOrOnDGen(self, other)
         else:
             raise ValueError('Comparing two dage generators is not supported')
 
     def __le__(self, other):
-        if is_date_gen(other) and self.is_single_date_gen():
+        if is_dgen(other) and self.is_single_date_gen():
             return other.__gt__(self)
         else:
             if lhs := getattr(self, '__compared__', None):
-                return BeforeOrOnDateGenerator(lhs, make_date(other))
-            return BeforeOrOnDateGenerator(self, make_date(other))
+                return BeforeOrOnDGen(lhs, make_date(other))
+            return BeforeOrOnDGen(self, make_date(other))
 
     def __add__(self, other):
-        return AddTenorDateGenerator(self, Tenor(other))
+        return AddTenorDGen(self, Tenor(other))
 
     def __sub__(self, other):
-        return SubTenorDateGenerator(self, Tenor(other))
+        return SubTenorDGen(self, Tenor(other))
 
     def __getitem__(self, item):
         if isinstance(item, int):
             if item >= 0:
-                return SliceDateGenerator(self, slice(item, item + 1))
+                return SliceDGen(self, slice(item, item + 1))
             else:
                 raise ValueError(f"{type(self)} date generator does not support negative indices")
         if isinstance(item, slice):
             if is_negative_slice(item):
                 raise ValueError(f"{type(self)} date generator does not support negative indices")
-            return SliceDateGenerator(self, item)
+            return SliceDGen(self, item)
 
 
-class ConstDateGenerator(DateGenerator):
+class ConstDGen(DGen):
     def __init__(self, date):
         self.date = date
 
-    def is_signle_date_gen(self):
+    def is_single_date_gen(self):
         return True
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
@@ -131,7 +134,7 @@ class ConstDateGenerator(DateGenerator):
         yield self.date
 
 
-class SequenceDateGenerator(DateGenerator):
+class SequenceDGen(DGen):
     def __init__(self, dates):
         self.dates = dates
 
@@ -140,7 +143,7 @@ class SequenceDateGenerator(DateGenerator):
         yield from self.dates
 
 
-class AfterDateGenerator(DateGenerator):
+class AfterDGen(DGen):
     def __init__(self, gen, date):
         self.gen = gen
         self.date = date
@@ -150,7 +153,7 @@ class AfterDateGenerator(DateGenerator):
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             after = self.date(start, end, after, before, calendar)
         else:
             after = self.date
@@ -158,13 +161,13 @@ class AfterDateGenerator(DateGenerator):
         yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d > after)
 
     def __bool__(self):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             self.date.__compared__ = self
         self.gen.__compared__ = self
         return True
 
 
-class AfterOrOnDateGenerator(DateGenerator):
+class AfterOrOnDGen(DGen):
     def __init__(self, gen, date):
         self.gen = gen
         self.date = date
@@ -174,7 +177,7 @@ class AfterOrOnDateGenerator(DateGenerator):
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             after = self.date(start, end, after, before, calendar)
         else:
             after = self.date
@@ -182,13 +185,13 @@ class AfterOrOnDateGenerator(DateGenerator):
         yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d >= after)
 
     def __bool__(self):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             self.date.__compared__ = self
         self.gen.__compared__ = self
         return True
 
 
-class BeforeDateGenerator(DateGenerator):
+class BeforeDGen(DGen):
     def __init__(self, gen, date):
         self.gen = gen
         self.date = date
@@ -198,7 +201,7 @@ class BeforeDateGenerator(DateGenerator):
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             before = self.date(start, end, after, before, calendar)
         else:
             before = self.date
@@ -206,7 +209,7 @@ class BeforeDateGenerator(DateGenerator):
         yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d < before)
 
 
-class BeforeOrOnDateGenerator(DateGenerator):
+class BeforeOrOnDGen(DGen):
     def __init__(self, gen, date):
         self.gen = gen
         self.date = date
@@ -216,7 +219,7 @@ class BeforeOrOnDateGenerator(DateGenerator):
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
-        if is_date_gen(self.date):
+        if is_dgen(self.date):
             before = self.date(start, end, after, before, calendar)
         else:
             before = self.date
@@ -224,7 +227,7 @@ class BeforeOrOnDateGenerator(DateGenerator):
         yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d <= before)
 
 
-class EveryDayDateGenerator(DateGenerator):
+class EveryDayDGen(DGen):
     def cadence(self):
         return Tenor('1d')
 
@@ -238,10 +241,10 @@ class EveryDayDateGenerator(DateGenerator):
             start += timedelta(days=1)
 
 
-days = EveryDayDateGenerator()
+days = EveryDayDGen()
 
 
-class WeekdaysDateGenerator(DateGenerator):
+class WeekdaysDGen(DGen):
     def __init__(self, gen):
         self.gen = gen
 
@@ -256,13 +259,13 @@ class WeekdaysDateGenerator(DateGenerator):
                     if d.weekday() not in we)
 
     def __call__(self, gen):
-        return WeekdaysDateGenerator(gen)
+        return WeekdaysDGen(gen)
 
 
-weekdays = WeekdaysDateGenerator(days)
+weekdays = WeekdaysDGen(days)
 
 
-class WeekendsDateGenerator(DateGenerator):
+class WeekendsDGen(DGen):
     def __init__(self, gen):
         self.gen = gen
 
@@ -277,13 +280,13 @@ class WeekendsDateGenerator(DateGenerator):
                     if d.weekday() in we)
 
     def __call__(self, gen):
-        return WeekendsDateGenerator(gen)
+        return WeekendsDGen(gen)
 
 
-weekends = WeekendsDateGenerator(EveryDayDateGenerator())
+weekends = WeekendsDGen(EveryDayDGen())
 
 
-class WeeksDateGenerator(DateGenerator):
+class WeeksDGen(DGen):
     def cadence(self):
         return Tenor('1w')
 
@@ -326,10 +329,10 @@ class WeeksDateGenerator(DateGenerator):
         return self + '6d'
 
 
-weeks = WeeksDateGenerator()
+weeks = WeeksDGen()
 
 
-class AddTenorDateGenerator(DateGenerator):
+class AddTenorDGen(DGen):
     def __init__(self, gen, tenor):
         self.gen = gen
         self.tenor = tenor
@@ -344,7 +347,7 @@ class AddTenorDateGenerator(DateGenerator):
         yield from (self.tenor.add_to(d, calendar) for d in self.gen.__invoke__(start, end, after, before, calendar))
 
 
-class SubTenorDateGenerator(DateGenerator):
+class SubTenorDGen(DGen):
     def __init__(self, gen, tenor):
         self.gen = gen
         self.tenor = tenor
@@ -360,7 +363,7 @@ class SubTenorDateGenerator(DateGenerator):
         yield from (self.tenor.sub_from(d, calendar) for d in self.gen.__invoke__(start, end, after, before, calendar))
 
 
-class JoinDateGenerator(DateGenerator):
+class JoinDGen(DGen):
     def __init__(self, gen1, gen2):
         self.gen1 = gen1
         self.gen2 = gen2
@@ -393,7 +396,7 @@ class JoinDateGenerator(DateGenerator):
                 d2 = next(g2, None)
 
 
-class CommonDatesDateGenerator(DateGenerator):
+class CommonDatesDGen(DGen):
     def __init__(self, gen1, gen2):
         self.gen1 = gen1
         self.gen2 = gen2
@@ -416,7 +419,7 @@ class CommonDatesDateGenerator(DateGenerator):
                 d2 = next(g2, None)
 
 
-class MonthsDateGenerator(DateGenerator):
+class MonthsDGen(DGen):
     def cadence(self):
         return Tenor('1m')
 
@@ -438,25 +441,25 @@ class MonthsDateGenerator(DateGenerator):
 
     @property
     def weeks(self):
-        return SubSequenceDateGenerator(self, weeks)
+        return SubSequenceDGen(self, weeks)
 
     @property
     def days(self):
-        return SubSequenceDateGenerator(self, days)
+        return SubSequenceDGen(self, days)
 
     @property
     def weekdays(self):
-        return SubSequenceDateGenerator(self, weekdays)
+        return SubSequenceDGen(self, weekdays)
 
     @property
     def weekends(self):
-        return SubSequenceDateGenerator(self, weekends)
+        return SubSequenceDGen(self, weekends)
 
 
-months = MonthsDateGenerator()
+months = MonthsDGen()
 
 
-class SubSequenceDateGenerator(DateGenerator):
+class SubSequenceDGen(DGen):
     def __init__(self, main_sequence, sub_sequence, slice = None):
         if main_sequence.cadence() in (None, Tenor('1d')):
             raise ValueError(f'cannot generate sub sequences from main sequence with cadence of {main_sequence.cadence()}')
@@ -476,7 +479,7 @@ class SubSequenceDateGenerator(DateGenerator):
                    calendar: Calendar = None):
         for begin in self.main_sequence.__invoke__(start, end, after, before, calendar):
             end = self.main_sequence.cadence().add_to(begin)
-            sub_sequence = cast(DateGenerator, begin <= self.sub_sequence < end)
+            sub_sequence = cast(DGen, begin <= self.sub_sequence < end)
             if self.slice is None:
                 yield from sub_sequence()
             else:
@@ -487,11 +490,11 @@ class SubSequenceDateGenerator(DateGenerator):
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return SubSequenceDateGenerator(self.main_sequence, self.sub_sequence, slice(item, item + 1))
+            return SubSequenceDGen(self.main_sequence, self.sub_sequence, slice(item, item + 1))
         if isinstance(item, slice):
-            return SubSequenceDateGenerator(self.main_sequence, self.sub_sequence, item)
+            return SubSequenceDGen(self.main_sequence, self.sub_sequence, item)
 
-class DaysOfMonthDateGenerator(DateGenerator):
+class DaysOfMonthDGen(DGen):
     def __init__(self, months, days):
         self.months = months
         self.days = days
@@ -503,7 +506,7 @@ class DaysOfMonthDateGenerator(DateGenerator):
             yield from (month <= self.days < next_month)()
 
 
-class YearsDateGenerator(DateGenerator):
+class YearsDGen(DGen):
     def cadence(self):
         return Tenor('1y')
 
@@ -523,29 +526,29 @@ class YearsDateGenerator(DateGenerator):
 
     @property
     def months(self):
-        return SubSequenceDateGenerator(self, months)
+        return SubSequenceDGen(self, months)
 
     @property
     def weeks(self):
-        return SubSequenceDateGenerator(self, weeks)
+        return SubSequenceDGen(self, weeks)
 
     @property
     def days(self):
-        return SubSequenceDateGenerator(self, days)
+        return SubSequenceDGen(self, days)
 
     @property
     def weekdays(self):
-        return SubSequenceDateGenerator(self, weekdays)
+        return SubSequenceDGen(self, weekdays)
 
     @property
     def weekends(self):
-        return SubSequenceDateGenerator(self, weekends)
+        return SubSequenceDGen(self, weekends)
 
 
-years = YearsDateGenerator()
+years = YearsDGen()
 
 
-class SliceDateGenerator(DateGenerator):
+class SliceDGen(DGen):
     def __init__(self, gen, slice):
         self.gen = gen
         self.slice = slice

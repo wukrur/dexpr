@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
 import pytest
 
 from expressions.magic import *
+from expressions.magic import FailedOp
 
 
 @dataclass

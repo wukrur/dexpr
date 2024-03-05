@@ -1,5 +1,5 @@
 # expressions
-A little library for capturing and using various toypes of expressions in python.
+A little library for capturing and using various types of expressions in python.
 
 
 ## magic Op
@@ -49,7 +49,7 @@ the expression itself but can be supplied when we ask it to generate:
 
 ```python
 last_sundays_in_march = years.months[2].weeks[-1].sun
-list_of_last_sundays_in_march = list(last_sundays_in_march(after='1980-01-01', bvefore='2030-01-01'))
+list_of_last_sundays_in_march = list(last_sundays_in_march(after='1980-01-01', before='2030-01-01'))
 ```
 
 There is also a support for adding and subtracting tenors from dates:
@@ -72,7 +72,7 @@ to do:
 class OrderWithLambda:
     order_date: date
     shipping_time: Tenor
-    expected_delivery_date: date = lambda self: self.,order_date + self.shipping_time
+    expected_delivery_date: date = lambda self: self.order_date + self.shipping_time
 
 o = OrderWithLambda(order_date=make_date('2020-02-02'), shipping_time=Tenor('3d'))
 assert o.expected_delivery_date == make_date('2020-02-05')

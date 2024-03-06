@@ -108,7 +108,23 @@ class DGen(Item):
         return AddTenorDGen(self, Tenor(other))
 
     def __sub__(self, other):
-        return SubTenorDGen(self, Tenor(other))
+        try:
+            tenor = Tenor(other)
+            return SubTenorDGen(self, tenor)
+        except:
+            pass
+
+        try:
+            gen = make_dgen(other)
+            return RemoveDatesDGen(self, gen)
+        except:
+            pass
+
+        raise ValueError(f'{other} is not a tenor or date generator')
+
+    def __rsub__(self, other):
+        gen = make_dgen(other)
+        return RemoveDatesDGen(gen, self)
 
     def __getitem__(self, item):
         if isinstance(item, int):
@@ -419,6 +435,33 @@ class CommonDatesDGen(DGen):
                 d2 = next(g2, None)
 
 
+class RemoveDatesDGen(DGen):
+    def __init__(self, gen1, gen2):
+        self.gen1 = gen1
+        self.gen2 = gen2
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        g1 = self.gen1.__invoke__(start, end, after, before, calendar)
+        g2 = self.gen2.__invoke__(start, end, after, before, calendar)
+
+        d1 = next(g1, None)
+        d2 = next(g2, None)
+        while d1 is not None and d2 is not None:
+            if d1 == d2:
+                d1 = next(g1, None)
+                d2 = next(g2, None)
+            elif d1 < d2:
+                yield d1
+                d1 = next(g1, None)
+            else:
+                d2 = next(g2, None)
+        if d2 is None:
+            while d1 is not None:
+                yield d1
+                d1 = next(g1, None)
+
+
 class MonthsDGen(DGen):
     def cadence(self):
         return Tenor('1m')
@@ -527,6 +570,54 @@ class YearsDGen(DGen):
     @property
     def months(self):
         return SubSequenceDGen(self, months)
+
+    @property
+    def jan(self):
+        return self.months[0]
+
+    @property
+    def feb(self):
+        return self.months[1]
+
+    @property
+    def mar(self):
+        return self.months[2]
+
+    @property
+    def apr(self):
+        return self.months[3]
+
+    @property
+    def may(self):
+        return self.months[4]
+
+    @property
+    def jun(self):
+        return self.months[5]
+
+    @property
+    def jul(self):
+        return self.months[6]
+
+    @property
+    def aug(self):
+        return self.months[7]
+
+    @property
+    def sep(self):
+        return self.months[8]
+
+    @property
+    def oct(self):
+        return self.months[9]
+
+    @property
+    def nov(self):
+        return self.months[10]
+
+    @property
+    def dec(self):
+        return self.months[11]
 
     @property
     def weeks(self):

@@ -124,6 +124,13 @@ def test_date_generator():
     c = '2024-01-03' <= '2024-01-15' & weeks.fri <= '2024-02-01'
     assert tuple(d for d in c()) == ()
 
+    c = '2024-01-03' <= weeks.fri - '2024-01-12' <= '2024-02-01'
+    assert tuple(d for d in c()) == (
+        date(2024, 1, 5), date(2024, 1, 19), date(2024, 1, 26))
+
+    c = '2024-01-03' <= (date(2024, 1, 5), date(2024, 1, 12), date(2024, 1, 15)) - weeks.fri[1] <= '2024-02-01'
+    assert tuple(d for d in c()) == (date(2024, 1, 5), date(2024, 1, 15))
+
     c = '2024-01-03' <= months <= '2024-04-01'
     assert tuple(d for d in c()) == (date(2024, 2, 1), date(2024, 3, 1), date(2024, 4, 1))
 
@@ -163,7 +170,10 @@ def test_date_generator():
     c = '2020-01-03' <= years.months.weeks < '2024-12-31'
     assert tuple(d for d in c()) == tuple(d for d in ('2020-01-03' <= weeks < '2024-12-31')())
 
-    c = '2020-01-03' <= years.months[3].weeks[2].fri < '2023-12-31'
+    c = '2020-01-03' <= years.months.weeks.fri < '2024-12-31'
+    assert tuple(d for d in c()) == tuple(d for d in ('2020-01-03' <= weeks.fri < '2024-12-31')())
+
+    c = '2020-01-03' <= years.apr.weeks[2].fri < '2023-12-31'
     assert tuple(d for d in c()) == (date(2020, 4, 24), date(2021, 4, 23), date(2022, 4, 22), date(2023, 4, 21))
 
 

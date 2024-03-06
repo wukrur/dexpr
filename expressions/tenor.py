@@ -23,8 +23,10 @@ class Tenor:
             self.ymwd_b = (tenor.y, tenor.m, tenor.w, tenor.d, tenor.b)
         elif type(tenor) is timedelta:
             self.ymwd_b = (0, 0, 0, tenor.days, 0)
-        elif type(tenor) is tuple and len(tenor) == 5:
+        elif type(tenor) is tuple and len(tenor) == 5 and all(isinstance(i, int) for i in tenor):
             self.ymwd_b = tenor
+        else:
+            raise ValueError(f'"{tenor}" is a invalid tenor value')
 
     def __str__(self):
         s = sum(self.ymwd_b)

@@ -1,4 +1,4 @@
-# expressions
+# DExpr - general and date expressions library
 A little library for capturing and using various types of expressions in python.
 
 

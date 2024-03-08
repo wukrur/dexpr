@@ -3,14 +3,14 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "expressions"
+name = "dexpr"
 authors = [
     {name = "wukrur", email = "wukrur@github.com"},
 ]
 description = "Libraries for capturing and using expressions in python"
 readme = "README.md"
 requires-python = ">=3.11"
-keywords = ["expressions", "date generators"]
+keywords = ["expressions", "date generators", "extended dataclass"]
 license = {text = "MIT"}
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -21,4 +21,4 @@ dependencies = [
 dynamic = ["version"]
 
 [tool.setuptools]
-packages = ["expressions"]
+packages = ["dexpr"]

@@ -44,7 +44,7 @@ def test_weekend_calendar_sub_business_days(d, t, r):
 ))
 def test_holiday_calendar_add_business_days(d, t, r):
     all_fridays = '1997-01-01' <= weeks.fri <= '1999-01-01'
-    calendar = HolidayCalendar([5, 6], tuple(all_fridays()))
+    calendar = HolidayCalendar(tuple(all_fridays()))
     assert calendar.add_business_days(d, t) == r
 
 @pytest.mark.parametrize(['d', 't', 'r'], (
@@ -59,7 +59,7 @@ def test_holiday_calendar_add_business_days(d, t, r):
 ))
 def test_holiday_calendar_add_business_days_1(d, t, r):
     all_mondays = '1997-01-01' <= weeks.mon <= '1999-01-01'
-    calendar = HolidayCalendar([5, 6], tuple(all_mondays()))
+    calendar = HolidayCalendar(tuple(all_mondays()))
     assert calendar.add_business_days(d, t) == r
 
 @pytest.mark.parametrize(['d', 't', 'r'], (
@@ -74,7 +74,7 @@ def test_holiday_calendar_add_business_days_1(d, t, r):
 ))
 def test_holiday_calendar_sub_business_days(d, t, r):
     all_fridays = '1997-01-01' <= weeks.fri <= '1999-01-01'
-    calendar = HolidayCalendar([5, 6], tuple(all_fridays()))
+    calendar = HolidayCalendar(tuple(all_fridays()))
     assert calendar.sub_business_days(d, t) == r
 
 
@@ -90,5 +90,5 @@ def test_holiday_calendar_sub_business_days(d, t, r):
 ))
 def test_holiday_calendar_sub_business_days_1(d, t, r):
     all_mondays = '1997-01-01' <= weeks.mon <= '1999-01-01'
-    calendar = HolidayCalendar([5, 6], tuple(all_mondays()))
+    calendar = HolidayCalendar(tuple(all_mondays()))
     assert calendar.sub_business_days(d, t) == r

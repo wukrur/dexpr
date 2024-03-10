@@ -2,11 +2,12 @@ from datetime import date, timedelta
 from itertools import islice
 from typing import cast
 
-from expressions.calendar import Calendar
-from expressions.magic import Item
-from expressions.tenor import Tenor
+from dexpr.calendar import Calendar
+from dexpr.magic import Item
+from dexpr.tenor import Tenor
 
-__all__ = ('is_dgen', 'make_date', 'make_dgen', 'years', 'months', 'weeks', 'weekdays', 'weekends', 'days')
+__all__ = ('is_dgen', 'make_date', 'make_dgen', 'years', 'months', 'weeks', 'weekdays', 'weekends', 'days',
+           'business_days', 'roll_fwd', 'roll_bwd')
 
 
 def is_dgen(obj):
@@ -136,6 +137,9 @@ class DGen(Item):
             if is_negative_slice(item):
                 raise ValueError(f"{type(self)} date generator does not support negative indices")
             return SliceDGen(self, item)
+
+    def over(self, calendar: Calendar):
+        return WithCalendarDGen(self, calendar)
 
 
 class ConstDGen(DGen):
@@ -274,9 +278,6 @@ class WeekdaysDGen(DGen):
                     self.gen.__invoke__(start, end, after, before, calendar)
                     if d.weekday() not in we)
 
-    def __call__(self, gen):
-        return WeekdaysDGen(gen)
-
 
 weekdays = WeekdaysDGen(days)
 
@@ -295,11 +296,26 @@ class WeekendsDGen(DGen):
                     self.gen.__invoke__(start, end, after, before, calendar)
                     if d.weekday() in we)
 
-    def __call__(self, gen):
-        return WeekendsDGen(gen)
-
 
 weekends = WeekendsDGen(EveryDayDGen())
+
+
+class BusinessDaysDGen(DGen):
+    def __init__(self, gen):
+        self.gen = gen
+
+    def cadence(self):
+        return self.gen.cadence()
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        assert calendar, 'Business days calculation requires a calendar'
+        yield from (d for d in
+                    self.gen.__invoke__(start, end, after, before, calendar)
+                    if not calendar.is_holiday_or_weekend(d))
+
+
+business_days = BusinessDaysDGen(EveryDayDGen())
 
 
 class WeeksDGen(DGen):
@@ -346,6 +362,21 @@ class WeeksDGen(DGen):
 
 
 weeks = WeeksDGen()
+
+
+class DayOfWeekDGen(DGen):
+    def __init__(self, weekday):
+        self.weekday = weekday
+
+    def cadence(self):
+        return Tenor('1w')
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        d = after + timedelta(days=(self.weekday - after.weekday()) % 7)
+        while d < before:
+            yield d
+            d += timedelta(days=7)
 
 
 class AddTenorDGen(DGen):
@@ -497,6 +528,34 @@ class MonthsDGen(DGen):
     @property
     def weekends(self):
         return SubSequenceDGen(self, weekends)
+
+    @property
+    def mon(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(0))
+
+    @property
+    def tue(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(1))
+
+    @property
+    def wed(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(2))
+
+    @property
+    def thu(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(3))
+
+    @property
+    def fri(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(4))
+
+    @property
+    def sat(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(5))
+
+    @property
+    def sun(self):
+        return SubSequenceDGen(self, DayOfWeekDGen(6))
 
 
 months = MonthsDGen()
@@ -650,3 +709,55 @@ class SliceDGen(DGen):
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
         yield from islice(self.gen.__invoke__(start, end, after, before, calendar), self.slice.start, self.slice.stop, self.slice.step)
+
+
+class WithCalendarDGen(DGen):
+    def __init__(self, gen, calendar):
+        self.gen = gen
+        self.calendar = calendar
+
+    def cadence(self):
+        return self.gen.cadence
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        yield from (d for d in self.gen.__invoke__(start, end, after, before, self.calendar))
+
+
+class RollFwdDGen(DGen):
+    def __init__(self, gen, calendar=None):
+        self.gen = gen
+        self.calendar = calendar
+
+    def cadence(self):
+        return self.gen.cadence()
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        c = self.calendar or calendar
+        assert c, 'Business days calculation requires a calendar'
+        yield from (c.add_business_days(d, 0) for d in self.gen.__invoke__(start, end, after, before, calendar))
+
+
+def roll_fwd(x, calendar=None):
+    return RollFwdDGen(x, calendar)
+
+
+class RollBwdDGen(DGen):
+    def __init__(self, gen, calendar=None):
+        self.gen = gen
+        self.calendar = calendar
+
+    def cadence(self):
+        return self.gen.cadence()
+
+    def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
+                   calendar: Calendar = None):
+        c = self.calendar or calendar
+        assert c, 'Business days calculation requires a calendar'
+        yield from (c.sub_business_days(d, 0) for d in self.gen.__invoke__(start, end, after, before, calendar))
+
+
+def roll_bwd(x, calendar=None):
+    return RollBwdDGen(x, calendar)
+

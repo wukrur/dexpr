@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from expressions.dataclassex import DataclassEx, dataclassex, OpDescriptor
-from expressions.magic import ParameterOp
+from dexpr.dataclassex import DataclassEx, dataclassex, OpDescriptor
+from dexpr.magic import ParameterOp
 
 Self = ParameterOp(_name='Self', _index=0)
 

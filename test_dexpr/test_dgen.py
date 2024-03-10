@@ -1,9 +1,12 @@
 from datetime import date, timedelta
 
+import holidays
 import pytest
 
-from expressions.dgen import make_date, make_dgen, days, weeks, weekdays, weekends, months, years
-from expressions.tenor import Tenor
+from dexpr.calendar import WeekendCalendar, HolidayCalendar
+from dexpr.dgen import make_date, make_dgen, days, weeks, weekdays, weekends, months, years, business_days, roll_fwd, \
+    roll_bwd
+from dexpr.tenor import Tenor
 
 
 @pytest.mark.parametrize(['s', 'valid'], [
@@ -106,6 +109,9 @@ def test_date_generator():
     c = '2024-01-01' <= weekends <= '2024-01-31'
     assert tuple(d for d in c()) == tuple(d for d in (date(2024, 1, 1) + timedelta(days=i) for i in range(31)) if d.weekday() >= 5)
 
+    c = '2024-01-01' <= business_days.over(WeekendCalendar()) <= '2024-01-31'
+    assert tuple(d for d in c()) == tuple(d for d in (date(2024, 1, 1) + timedelta(days=i) for i in range(31)) if d.weekday() < 5)
+
     c = '2024-01-03' <= weeks.fri | '2024-01-15' <= '2024-02-01'
     assert tuple(d for d in c()) == (
             date(2024, 1, 5), date(2024, 1, 12), date(2024, 1, 15), date(2024, 1, 19), date(2024, 1, 26))
@@ -173,9 +179,18 @@ def test_date_generator():
     c = '2020-01-03' <= years.months.weeks.fri < '2024-12-31'
     assert tuple(d for d in c()) == tuple(d for d in ('2020-01-03' <= weeks.fri < '2024-12-31')())
 
+    # not these are not third Fridays of Aprils, but Fridays on the third week that starts in April
     c = '2020-01-03' <= years.apr.weeks[2].fri < '2023-12-31'
     assert tuple(d for d in c()) == (date(2020, 4, 24), date(2021, 4, 23), date(2022, 4, 22), date(2023, 4, 21))
 
+    # these are third Fridays of Apr
+    c = '2020-01-03' <= years.apr.fri[2] < '2023-12-31'
+    assert tuple(d for d in c()) == (date(2020, 4, 17), date(2021, 4, 16), date(2022, 4, 15), date(2023, 4, 21))
 
+    calendar = HolidayCalendar(holidays.country_holidays('GB', 'ENG')['2020-01-03': '2023-12-31'])
 
+    c = '2020-01-03' <= roll_fwd(years.apr.fri[2], calendar) < '2023-12-31'
+    assert tuple(d for d in c()) == (date(2020, 4, 17), date(2021, 4, 16), date(2022, 4, 19), date(2023, 4, 21))
 
+    c = '2020-01-03' <= roll_bwd(years.apr.fri[2]).over(calendar) < '2023-12-31'
+    assert tuple(d for d in c()) == (date(2020, 4, 17), date(2021, 4, 16), date(2022, 4, 14), date(2023, 4, 21))

@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from inspect import isfunction, signature
 
-from expressions.magic import calc, Op
+from dexpr.magic import calc, Op
 
 
 __all__ = ("dataclassex", 'DataclassEx')

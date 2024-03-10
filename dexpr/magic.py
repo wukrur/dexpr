@@ -1,3 +1,4 @@
+import inspect
 import itertools
 import operator
 import site
@@ -7,6 +8,10 @@ from dataclasses import dataclass
 from typing import Callable, Union, Sequence, Mapping
 
 __all__ = ('lazy', 'calc', 'const', 'ParameterOp')
+
+
+def is_op(obj):
+    return isinstance(obj, Op)
 
 
 def make_op(obj):
@@ -738,6 +743,21 @@ def find_iterators(op, tp=Iterator):
     return layers, iterators
 
 
+def find_parameters(op, tp=ParameterOp):
+    parameters = defaultdict(int)
+
+    def f(op):
+        if isinstance(op, Op):
+            if isinstance(op, tp):
+                parameters[op] += 1
+            else:
+                op.__visit_operands__(f)
+        return False, True
+
+    f(op)
+    return tuple(parameters.keys())
+
+
 def replace(op, mapping):
     def replacer(x):
         return y if ((y := mapping.get(x, None) if isinstance(x, Op) else x) is not None
@@ -753,3 +773,37 @@ def calc(expr: Union[Op, Sequence[Op], Mapping], *args, raise_=True, **kwargs):
         raise r
 
     return r
+
+
+class Expression:
+    def __init__(self, op: Op):
+        self._op = op
+
+    def __call__(self, *args, **kwargs):
+        return calc(self._op, *args, **kwargs)
+
+    def __repr__(self):
+        return repr(self.op)
+
+    @property
+    def __signature__(self):
+        i_parameters = {}
+        kw_parameters = []
+        for p in find_parameters(self._op):
+            if p._name is not None and p._index is not None:
+                i_parameters[p._index] = inspect.Parameter(p._name, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            elif p._index is not None:
+                i_parameters[p._index] = inspect.Parameter(f'i{p._index}', inspect.Parameter.POSITIONAL_OR_KEYWORD)
+            elif p._name is not None:
+                kw_parameters.append(inspect.Parameter(p._name, inspect.Parameter.KEYWORD_ONLY))
+
+        last_index = max(i_parameters.keys(), default=-1)
+        parametes = []
+        for i in range(last_index + 1):
+            if i in i_parameters:
+                parametes.append(i_parameters[i])
+            else:
+                parametes.append(inspect.Parameter(f'i{i}', inspect.Parameter.POSITIONAL_OR_KEYWORD))
+
+        parametes.extend(kw_parameters)
+        return inspect.Signature(parametes)

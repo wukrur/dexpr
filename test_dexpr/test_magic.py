@@ -1,9 +1,10 @@
+import inspect
 from dataclasses import dataclass
 
 import pytest
 
-from expressions.magic import *
-from expressions.magic import FailedOp
+from dexpr.magic import *
+from dexpr.magic import FailedOp, Expression
 
 
 @dataclass
@@ -154,3 +155,24 @@ def test_magic_dict_comprehension():
 
     expr2 = {0: '0', **expr1}
     assert calc(expr2, {1: "1", 2: "2", 3: "3"}) == {0: "0", 1: "1", 2: "2", 3: "3"}
+
+
+def test_expression():
+    expr = Expression(_1 + _0)
+    s = inspect.signature(expr)
+    assert len(s.parameters) == 2
+    assert list(s.parameters.keys()) == ['i0', 'i1']
+    assert s.parameters['i0'].name == 'i0'
+    assert s.parameters['i0'].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert s.parameters['i1'].name == 'i1'
+    assert s.parameters['i1'].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert expr(1, 2) == 3
+
+    _key = ParameterOp(_name='key')
+    expr1 = Expression(_key + 1)
+    s = inspect.signature(expr1)
+    assert len(s.parameters) == 1
+    assert list(s.parameters.keys()) == ['key']
+    assert s.parameters['key'].name == 'key'
+    assert s.parameters['key'].kind == inspect.Parameter.KEYWORD_ONLY
+    assert expr1(key=1) == 2

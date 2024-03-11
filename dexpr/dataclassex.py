@@ -1,9 +1,10 @@
 from abc import abstractmethod
 from dataclasses import dataclass
+from datetime import date
 from inspect import isfunction, signature
 
-from dexpr.magic import calc, Op
-
+from dexpr import make_date, is_dgen
+from dexpr.magic import calc, Op, Expression, is_op
 
 __all__ = ("dataclassex", 'DataclassEx')
 
@@ -38,13 +39,31 @@ class _BaseExDescriptor:
         self.cache_name = f'__cache_{self.name or id(self)}__'
 
 
-class OpDescriptor(_BaseExDescriptor):
-    def __calc__(self, instance):
-        return calc(self.expr, instance)
-
-class LambdaDescriptor(_BaseExDescriptor):
+class CallableDescriptor(_BaseExDescriptor):
     def __calc__(self, instance):
         return self.expr(instance)
+
+
+class DateDescriptor(_BaseExDescriptor):
+    def __calc__(self, instance):
+        r = self.expr(instance)
+        if isinstance(r, date):
+            return r
+        elif is_dgen(r):
+            return next(r())
+        else:
+            return make_date(r)
+
+
+class DateListDescriptor(_BaseExDescriptor):
+    def __calc__(self, instance):
+        r = self.expr(instance)
+        if isinstance(r, date):
+            return [r]
+        elif is_dgen(r):
+            return tuple(r())
+        else:
+            return make_date(r)
 
 
 def _process_ops_and_lambdas(cls):
@@ -52,13 +71,21 @@ def _process_ops_and_lambdas(cls):
 
     for k, a in cls.__annotations__.items():
         if (op := getattr(cls, k, None)) is not None:
-            if isinstance(op, Op) and not issubclass(a, Op):
-                descriptor = OpDescriptor(op)
+
+            if a == date:  # special treatment for dates
+                descriptor_type = DateDescriptor
+            elif a == list[date] or a == tuple[date]:
+                descriptor_type = DateListDescriptor
+            else:
+                descriptor_type = CallableDescriptor
+
+            if isinstance(op, Op) and not is_op(a):
+                descriptor = descriptor_type(Expression(op))
                 descriptor.__set_name__(cls, k)
                 setattr(cls, k, descriptor)
             elif isfunction(op) and op.__name__ == '<lambda>':
                 if len(signature(op).parameters) == 1:
-                    descriptor = LambdaDescriptor(op)
+                    descriptor = descriptor_type(op)
                     descriptor.__set_name__(cls, k)
                     setattr(cls, k, descriptor)
 

@@ -3,7 +3,7 @@ from itertools import islice
 from typing import cast
 
 from dexpr.calendar import Calendar
-from dexpr.magic import Item
+from dexpr.magic import Item, const, Op
 from dexpr.tenor import Tenor
 
 __all__ = ('is_dgen', 'make_date', 'make_dgen', 'years', 'months', 'weeks', 'weekdays', 'weekends', 'days',
@@ -46,7 +46,7 @@ def is_negative_slice(item):
 class DGen(Item):
     def __call__(self, input_date=None, start: date = date.min, end: date = date.max, after: date = date.min,
                  before: date = date.max, calendar: Calendar = None):
-        return self.__invoke__(start, end, after, before, calendar)
+        return self.__invoke__(make_date(start), make_date(end), make_date(after), make_date(before), calendar)
 
     def __invoke__(self, start: date = date.min, end: date = date.max, after: date = date.min, before: date = date.max,
                    calendar: Calendar = None):
@@ -87,6 +87,8 @@ class DGen(Item):
         else:
             if lhs := getattr(self, '__compared__', None):
                 return BeforeDGen(lhs, make_date(other))
+            if self.__expression__ is not None:
+                return self.__expression__ < other
             return BeforeDGen(self, make_date(other))
 
     def __ge__(self, other):
@@ -103,6 +105,8 @@ class DGen(Item):
         else:
             if lhs := getattr(self, '__compared__', None):
                 return BeforeOrOnDGen(lhs, make_date(other))
+            if self.__expression__ is not None:
+                return self.__expression__ <= other
             return BeforeOrOnDGen(self, make_date(other))
 
     def __add__(self, other):
@@ -137,6 +141,8 @@ class DGen(Item):
             if is_negative_slice(item):
                 raise ValueError(f"{type(self)} date generator does not support negative indices")
             return SliceDGen(self, item)
+        if isinstance(item, Op):
+            return const(self)[item]
 
     def over(self, calendar: Calendar):
         return WithCalendarDGen(self, calendar)
@@ -583,18 +589,20 @@ class SubSequenceDGen(DGen):
             end = self.main_sequence.cadence().add_to(begin)
             sub_sequence = cast(DGen, begin <= self.sub_sequence < end)
             if self.slice is None:
-                yield from sub_sequence()
+                yield from (d for d in sub_sequence() if d < before)
             else:
                 if is_negative_slice(self.slice):
-                    yield from [d for d in sub_sequence()][self.slice]
+                    yield from [d for d in sub_sequence() if d < before][self.slice]
                 else:
-                    yield from islice(sub_sequence(), self.slice.start, self.slice.stop, self.slice.step)
+                    yield from (d for d in islice(sub_sequence(), self.slice.start, self.slice.stop, self.slice.step) if d < before)
 
     def __getitem__(self, item):
         if isinstance(item, int):
             return SubSequenceDGen(self.main_sequence, self.sub_sequence, slice(item, item + 1))
         if isinstance(item, slice):
             return SubSequenceDGen(self.main_sequence, self.sub_sequence, item)
+        if isinstance(item, Op):
+            return const(self)[item]
 
 class DaysOfMonthDGen(DGen):
     def __init__(self, months, days):

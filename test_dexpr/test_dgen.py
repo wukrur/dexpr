@@ -6,6 +6,7 @@ import pytest
 from dexpr.calendar import WeekendCalendar, HolidayCalendar
 from dexpr.dgen import make_date, make_dgen, days, weeks, weekdays, weekends, months, years, business_days, roll_fwd, \
     roll_bwd
+from dexpr.magic import Expression
 from dexpr.tenor import Tenor
 
 
@@ -194,3 +195,18 @@ def test_date_generator():
 
     c = '2020-01-03' <= roll_bwd(years.apr.fri[2]).over(calendar) < '2023-12-31'
     assert tuple(d for d in c()) == (date(2020, 4, 17), date(2021, 4, 16), date(2022, 4, 14), date(2023, 4, 21))
+
+
+def test_date_expressions():
+    from dexpr import ParameterOp
+    _0 = ParameterOp(_index=0)
+    _1 = ParameterOp(_index=1)
+
+    c = _0 <= months.fri <= _1
+    assert list(Expression(c)('2020-01-01', '2020-02-01')()) == [date(2020, 1, 3), date(2020, 1, 10), date(2020, 1, 17), date(2020, 1, 24), date(2020, 1, 31)]
+
+    c = '2020-01-01' <= _0 < '2020-02-01'
+    assert list(Expression(c)(months.fri)()) == [date(2020, 1, 3), date(2020, 1, 10), date(2020, 1, 17), date(2020, 1, 24), date(2020, 1, 31)]
+
+    c = months.fri[_0]
+    assert list(Expression(c)(1)(after='2020-01-01', before='2020-02-01')) == [date(2020, 1, 10)]

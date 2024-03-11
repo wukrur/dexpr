@@ -45,6 +45,12 @@ class Tenor:
     def __neg__(self):
         return Tenor(tuple(-i for i in self.ymwd_b))
 
+    def __radd__(self, other):
+        if isinstance(other, date):
+            return self.add_to(other)
+        else:
+            return other.__add__(self)
+
     def add_to(self, dt, calendar = None):
         if self.is_neg():
             return self.__neg__().sub_from(dt, calendar)

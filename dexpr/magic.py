@@ -402,7 +402,7 @@ class ChainCompareOp(Op):
         lhs = self._lhs.__invoke__(*args, **kwargs, **{self._parameter._name: obj})
         if isinstance(lhs, FailedOp):
             return lhs
-        if lhs is False:
+        if bool(lhs) is False:
             return lhs
 
         return self._rhs.__invoke__(*args, **kwargs, **{self._parameter._name: obj})

@@ -184,7 +184,9 @@ class AfterDGen(DGen):
         else:
             after = self.date
 
-        yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d > after)
+        after = after + timedelta(days=1)
+
+        yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d >= after)
 
     def __bool__(self):
         if is_dgen(self.date):
@@ -250,7 +252,9 @@ class BeforeOrOnDGen(DGen):
         else:
             before = self.date
 
-        yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d <= before)
+        before = before + timedelta(days=1)
+
+        yield from (d for d in self.gen.__invoke__(start, end, after, before, calendar) if d < before)
 
 
 class EveryDayDGen(DGen):

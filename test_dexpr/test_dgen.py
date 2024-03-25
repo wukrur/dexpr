@@ -79,7 +79,7 @@ def test_date_generator():
 
     c = '2024-01-01' < days[::2] <= '2024-01-05'
     assert tuple(d for d in c()) == (
-            date(2024, 1, 3), date(2024, 1, 5))
+            date(2024, 1, 2), date(2024, 1, 4))
 
     c = '2024-01-01' <= weeks <= '2024-02-01'
     assert tuple(d for d in c()) == (

@@ -6,7 +6,7 @@ from inspect import isfunction, signature
 from dexpr import make_date, is_dgen
 from dexpr.magic import calc, Op, Expression, is_op
 
-__all__ = ("dataclassex", 'DataclassEx')
+__all__ = ("dataclassex", 'exprclass', 'ExprClass')
 
 
 class _BaseExDescriptor:
@@ -92,7 +92,7 @@ def _process_ops_and_lambdas(cls):
     return cls
 
 
-class DataclassEx:
+class ExprClass:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         _process_ops_and_lambdas(cls)
@@ -100,3 +100,7 @@ class DataclassEx:
 
 def dataclassex(cls):
     return dataclass(_process_ops_and_lambdas(cls))
+
+
+def exprclass(cls):
+    return _process_ops_and_lambdas(cls)

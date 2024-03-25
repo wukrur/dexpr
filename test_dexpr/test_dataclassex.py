@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from dexpr import Tenor, days
-from dexpr.dataclassex import DataclassEx, dataclassex, CallableDescriptor
+from dexpr.exprclass import ExprClass, dataclassex, CallableDescriptor, exprclass
 from dexpr.magic import ParameterOp, lazy
 
 Self = ParameterOp(_name='Self', _index=0)
@@ -24,7 +24,7 @@ def test_expr_descriptor():
 
 def test_expr_descriptor_implicit():
     @dataclass
-    class expr_1(DataclassEx):
+    class expr_1(ExprClass):
         a: int
         b: int = Self.a + 1
 
@@ -63,16 +63,16 @@ def test_dataclassex_date():
     assert e.tomorrow == date.today() + timedelta(days=1)
 
 
-def test_dataclassex_dates():
-
-    @dataclassex
+def test_exprclass_dates():
+    @dataclass
+    @exprclass
     class date_expr_2:
         Self: 'date_expr_2'
 
         today: date = lambda x: date.today()
         in_a_month: date = Self.today + Tenor('1m')
         days_in_month: list[date] = Self.today <= days < Self.in_a_month
-        number_of_days = lazy(len)(Self.days_in_month)
+        number_of_days: int = lazy(len)(Self.days_in_month)
 
     e = date_expr_2()
     assert e.number_of_days == monthrange(e.today.year, e.today.month)[1]

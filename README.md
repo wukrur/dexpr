@@ -78,13 +78,15 @@ o = OrderWithLambda(order_date=make_date('2020-02-02'), shipping_time=Tenor('3d'
 assert o.expected_delivery_date == make_date('2020-02-05')
 ```
 
-adding Op expressoins:
+adding Op expressions:
 
 ```python
 Self = ParameterOp(_name='Self')
 
 @dataclassex
 class OrderWithOp:
+    Self: 'OrderWithOp'
+    
     order_date: date
     shipping_time: Tenor
     expected_delivery_date: date = Self.order_date + Self.shipping_time
@@ -92,4 +94,28 @@ class OrderWithOp:
 o = OrderWithLambda(order_date=make_date('2020-02-02'), shipping_time=Tenor('3d'))
 assert o.expected_delivery_date == make_date('2020-02-05')
 ```
+
+Note the `Self` member - it is there for enable autocomplete in the IDE when writing the expressions and is removed from
+processed annotations
+
+There are two other variants of syntax supported for declaring dataclasses with support for Ops and lambdas:
+
+```python
+@dataclass
+@exprclass
+class OrderWithOp:
+    ...
+```
+
+And
+
+```python
+@dataclass
+class OrderWithOp(ExprClass):
+    ...
+```
+
+They exist for cases when the developer wants to keep the @dataclass annotations as is 
+to use PyCharm's built in support for it hence enabling autocompletion and other IDE functionality
+
 

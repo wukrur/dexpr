@@ -19,7 +19,7 @@ class _BaseExDescriptor:
                 return v
 
             v = self.__calc__(instance)
-            setattr(instance, self.cache_name, v)
+            object.__setattr__(instance, self.cache_name, v)
             return v
         elif owner:
             return self

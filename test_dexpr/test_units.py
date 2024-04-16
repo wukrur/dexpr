@@ -1,5 +1,7 @@
+from decimal import Decimal
+
 from dexpr.dimension import PrimaryDimension, DerivedDimension
-from dexpr.unit import PrimaryUnit
+from dexpr.unit import PrimaryUnit, DerivedUnit
 from dexpr.unit_system import UnitSystem
 
 
@@ -43,3 +45,29 @@ def test_unit_auto_naming():
         assert U.pascal.dimension is U.pressure
         assert U.pascal is U.newton / U.meter_sq
 
+
+def test_unit_conversion_1():
+    with UnitSystem() as U:
+        U.length = PrimaryDimension()
+        U.meter = PrimaryUnit(dimension=U.length)
+        U.cm = DerivedUnit(primary_unit=U.meter, ratio=Decimal('0.01'))
+
+        assert U.cm.convert(100., to=U.meter) == 1.
+        assert U.cm.convert(Decimal(100), to=U.meter) == 1.
+
+        assert U.meter.convert(100., to=U.cm) == 10000.
+
+        U.meter_sq = U.meter**2
+        U.cm_sq = U.cm**2
+
+        assert U.meter_sq.convert(1., to=U.cm_sq) == 10000.
+        assert U.cm_sq.convert(1., to=U.meter_sq) == 0.0001
+
+        U.timespan = PrimaryDimension()
+        U.second = PrimaryUnit(dimension=U.timespan)
+        U.minute = DerivedUnit(primary_unit=U.second, ratio=Decimal(60))
+
+        U.velocity = U.length / U.timespan
+
+        assert (U.meter/U.second).convert(1., to=U.cm / U.minute) == 6000.
+        assert (U.cm/U.second).convert(1., to=U.meter / U.minute) == 60. / 100.
